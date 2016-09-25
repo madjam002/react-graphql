@@ -1,12 +1,13 @@
 {
   "name": "react-graphql",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "A simple but powerful GraphQL client for React",
   "main": "lib/index.js",
   "scripts": {
     "build": "rm -rf lib && babel src --out-dir lib --copy-files",
     "watch": "rm -rf lib && babel src --out-dir lib -w --copy-files",
     "lint": "eslint .",
+    "test": "npm run lint",
     "prepublish": "npm run test && npm run build"
   },
   "repository": {
