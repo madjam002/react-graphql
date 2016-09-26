@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "graphql-cache": "^0.1.0",
-    "graphql-tag": "^0.1.14"
+    "graphql-tag": "^0.1.14",
+    "recompose": "^0.20.2"
   }
 }

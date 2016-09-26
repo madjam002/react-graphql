@@ -1,5 +1,5 @@
 export {createGraphQLContext} from './context'
 export {GraphQLProvider} from './provider'
 export {connectGraph} from './connect-graph'
-export {graphComponent} from './graph-component'
+export {withFragments} from './with-fragments'
 export {gql} from './gql'
