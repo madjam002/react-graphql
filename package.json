@@ -45,6 +45,7 @@
     "react": "^15.3.2"
   },
   "dependencies": {
+    "graphql-cache": "^0.1.0",
     "graphql-tag": "^0.1.14"
   }
 }
