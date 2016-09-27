@@ -1,6 +1,5 @@
 import React, {PropTypes} from 'react'
 import {passThroughQuery} from 'graphql-cache'
-import {print} from 'graphql-tag/printer'
 
 export const connectGraph = options => BaseComponent =>
   class GraphContainer extends React.Component {
@@ -24,8 +23,6 @@ export const connectGraph = options => BaseComponent =>
         query,
         variables,
       }
-
-      console.log('Running', print(query))
 
       const queryToExecute = passThroughQuery(this.context.graphQLContext.cache, query, variables)
 

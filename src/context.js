@@ -1,5 +1,4 @@
 import {cacheQueryResult, queryCache} from 'graphql-cache'
-import {print} from 'graphql-tag/printer'
 import {EventEmitter} from 'events'
 
 export function createGraphQLContext(opts = {}) {
@@ -12,11 +11,8 @@ export function createGraphQLContext(opts = {}) {
   }
 
   function runQuery(query, variables) {
-    console.log('Exeucting query', print(query), variables)
-
     return opts.executeQuery(query, variables)
     .then(result => {
-      console.log('Result', result)
       updateCache(cacheQueryResult(context.cache, query, result.data, variables))
     })
   }
