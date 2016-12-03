@@ -1,5 +1,6 @@
+/* eslint-disable react/no-set-state */
+
 import React, {PropTypes} from 'react'
-import {passThroughQuery} from 'graphql-cache'
 
 export const connectGraph = options => BaseComponent =>
   class GraphContainer extends React.Component {
@@ -11,43 +12,84 @@ export const connectGraph = options => BaseComponent =>
     constructor(props) {
       super(props)
 
-      this.state = {}
+      this.state = {
+        isFetching: false,
+        data: undefined,
+      }
+
+      this.hasCompletedInitialLoad = false
+
       this.cacheUpdated = this.cacheUpdated.bind(this)
     }
 
-    fetch() {
-      const query = options.query(this.props)
-      const variables = options.variables ? options.variables(this.props) : {}
+    fetch(query, variables) {
+      this.setState({ isFetching: true })
 
+      return this.context.graphQLContext.runQuery(query, variables)
+      .then(() => {
+        this.hasCompletedInitialLoad = true
+        this.setState({ isFetching: false, hasError: false, error: null })
+      })
+      .catch(error => {
+        this.hasCompletedInitialLoad = true
+        this.setState({ isFetching: false, hasError: true, error })
+      })
+    }
+
+    updateTrackingQuery(query, variables) {
       this.trackingQuery = {
         query,
         variables,
       }
+    }
 
-      const queryToExecute = passThroughQuery(this.context.graphQLContext.cache, query, variables)
+    initialLoadWithProps(props) {
+      const query = options.query()
+      const variables = options.variables ? options.variables(props) : {}
 
-      if (!queryToExecute) {
-        this.setState({ _loaded: true }) // eslint-disable-line
-        this.reloadDataFromCache()
+      // can render without fetching?
+      if (options.renderOutdated) {
+        if (this.context.graphQLContext.cacheFulfillsQuery(query, variables)) {
+          console.log('Rendering outdated version from cache whilst loading')
+          this.hasCompletedInitialLoad = true
+          this.updateTrackingQuery(query, variables)
+          this.loadFromCache()
+        }
+      }
+
+      // determine what needs fetching
+      const queryToExecute = options.refetchOnMount
+        ? query
+        : this.context.graphQLContext.getQueryToExecute(query, variables)
+
+      // if everything is cache, just render from cache.
+      // don't render if we rendered with outdated cache because it will be the same data
+      if (!queryToExecute && !options.renderOutdated) {
+        this.hasCompletedInitialLoad = true
+        this.updateTrackingQuery(query, variables)
+        this.loadFromCache()
         return
       }
 
-      this.context.graphQLContext.runQuery(queryToExecute, variables)
+      return this.fetch(queryToExecute, variables)
       .then(() => {
-        this.setState({ _loaded: true }) // eslint-disable-line
+        if (!this.state.hasError) {
+          this.updateTrackingQuery(query, variables)
+          this.loadFromCache()
+        }
       })
     }
 
-    cacheUpdated() {
-      this.reloadDataFromCache()
-    }
-
-    reloadDataFromCache() {
+    loadFromCache() {
       if (!this.trackingQuery) return null
 
       const myData = this.context.graphQLContext.queryCache(this.trackingQuery.query, this.trackingQuery.variables)
 
-      this.setState({ data: myData }) // eslint-disable-line
+      this.setState({ data: myData })
+    }
+
+    cacheUpdated() {
+      this.loadFromCache()
     }
 
     componentWillMount() {
@@ -59,9 +101,24 @@ export const connectGraph = options => BaseComponent =>
         throw new Error('No query passed to connectGraph')
       }
 
-      this.context.graphQLContext.events.on('cacheUpdated', this.cacheUpdated)
+      if (!options.ignoreUpdates) {
+        this.context.graphQLContext.events.on('cacheUpdated', this.cacheUpdated)
+      }
 
-      this.fetch()
+      this.initialLoadWithProps(this.props)
+    }
+
+    forceRefetch() {
+      if (!this.trackingQuery) {
+        return this.initialLoadWithProps(this.props)
+      }
+
+      return this.fetch(this.trackingQuery.query, this.trackingQuery.variables)
+      .then(() => this.loadFromCache())
+    }
+
+    componentWillReceiveProps(nextProps) {
+      this.initialLoadWithProps(nextProps)
     }
 
     componentWillUnmount() {
@@ -69,13 +126,28 @@ export const connectGraph = options => BaseComponent =>
     }
 
     render() {
-      if (this.state._loaded && this.state.data) {
+      const graph = {
+        isFetching: this.state.isFetching,
+        hasError: this.state.hasError,
+        error: this.state.error,
+        forceRefetch: this.forceRefetch.bind(this),
+      }
+
+      if (this.state.data !== undefined && this.hasCompletedInitialLoad) {
         return (
-          <BaseComponent {...this.props} {...this.state.data} />
+          <BaseComponent
+            {...this.props}
+            {...this.state.data}
+            graph={graph}
+          />
         )
       }
 
-      return React.createElement(this.context.graphQLContext.opts.defaultLoadingComponent)
+      if (this.state.hasError && !graph.isFetching) {
+        return this.context.graphQLContext.opts.defaultRenderError(this.state.error, graph)
+      }
+
+      return this.context.graphQLContext.opts.defaultRenderLoading(graph)
     }
 
   }

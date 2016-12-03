@@ -7,7 +7,11 @@ export function gql(strings, ...fragments) {
   let fragmentsString = ''
 
   const fragmentsForParser = fragments.map(fragment => {
-    fragment.definitions[0].name.value += '__' + (fragmentIdCounter++).toString()
+    if (!fragment.definitions[0].name.__isUnique) {
+      fragment.definitions[0].name.value += '__' + (fragmentIdCounter++).toString()
+      fragment.definitions[0].name.__isUnique = true
+    }
+
     const name = fragment.definitions[0].name.value
 
     fragmentsString += print(fragment)
