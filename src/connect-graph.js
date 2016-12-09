@@ -71,6 +71,10 @@ export const connectGraph = options => BaseComponent =>
         return
       }
 
+      if (!queryToExecute) {
+        return
+      }
+
       return this.fetch(queryToExecute, variables)
       .then(() => {
         if (!this.state.hasError) {
