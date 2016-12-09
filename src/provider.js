@@ -19,7 +19,7 @@ export class GraphQLProvider extends React.Component {
   }
 
   render() {
-    return this.props.children
+    return 5
   }
 
 }
